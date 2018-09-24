@@ -1,0 +1,3 @@
+syntax:glob
+composer.lock
+vendor/

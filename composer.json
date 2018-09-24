@@ -1,0 +1,14 @@
+{
+  "name": "rvv/collection",
+  "description": "High-performance collection libraries",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {"RVV\\Collection\\": "src/"}
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "require": {
+    "php": ">=7.1"
+  }
+}
