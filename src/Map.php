@@ -209,7 +209,7 @@ class Map implements \Countable, \IteratorAggregate
     private static function hashArrayKey($array)
     {
         // Use an algorithm inspired by Symfony's VarCloner to detect recursion
-        $result = [];
+        $result = '';
         $queue = [$array];
         $offset = 0;
         $length = 1;
@@ -217,25 +217,27 @@ class Map implements \Countable, \IteratorAggregate
         $cookie = new \stdClass();
 
         while ($offset < $length) {
+            $result .= "\0{$offset}\1";
             $values = $refs = $queue[$offset];
             foreach ($values as $key => $value) {
                 if (\is_array($value)) {
                     $refs[$key] = $cookie;
                     if ($values[$key] === $cookie) {
                         $refs[$key] = $value;
-                        $result[] = "{$offset}\1{$key}\0ref\0";
+                        $result .= "\2{$key}\3\0ref\0\4";
                     } else {
                         $queue[] = $value;
                         ++$length;
                     }
                 } else {
-                    $result[] = "{$offset}\1{$key}\2" . self::hashKey($value);
+                    $value = self::hashKey($value);
+                    $result .= "\2{$key}\3{$value}\4";
                 }
             }
 
             ++$offset;
         }
 
-        return implode("\3", $result);
+        return $result;
     }
 }
