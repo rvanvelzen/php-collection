@@ -1,21 +1,6 @@
 <?php
 namespace RVV\Collection;
 
-/**
- * @internal
- */
-class MapEntry
-{
-    /** @var mixed */
-    public $key;
-    /** @var mixed */
-    public $value;
-    /** @var MapEntry|null */
-    public $prev = null;
-    /** @var MapEntry|null */
-    public $next = null;
-}
-
 class Map implements \Countable, \IteratorAggregate
 {
     /** @var int */
@@ -192,7 +177,14 @@ class Map implements \Countable, \IteratorAggregate
     private static function hashKey($key)
     {
         if (\is_object($key)) {
-            return \spl_object_id($key);
+            static $useId = null;
+            if ($useId === null) {
+                // prefer spl_object_id only if it's the built-in version - polyfills use spl_object_hash with some
+                // dark magic making it much slower
+                $useId = \function_exists('spl_object_id') && (new \ReflectionFunction('spl_object_id'))->isInternal();
+            }
+
+            return $useId ? \spl_object_id($key) : \spl_object_hash($key);
         }
 
         if (\is_array($key)) {
@@ -214,24 +206,27 @@ class Map implements \Countable, \IteratorAggregate
         $offset = 0;
         $length = 1;
 
-        $cookie = new \stdClass();
+        static $cookie;
+        if ($cookie === null) {
+            $cookie = new \stdClass();
+        }
 
         while ($offset < $length) {
-            $result .= "\0{$offset}\1";
+            $result .= $offset;
             $values = $refs = $queue[$offset];
             foreach ($values as $key => $value) {
                 if (\is_array($value)) {
                     $refs[$key] = $cookie;
                     if ($values[$key] === $cookie) {
                         $refs[$key] = $value;
-                        $result .= "\2{$key}\3\0ref\0\4";
+                        $result .= "{$key}\0";
                     } else {
                         $queue[] = $value;
                         ++$length;
                     }
                 } else {
                     $value = self::hashKey($value);
-                    $result .= "\2{$key}\3{$value}\4";
+                    $result .= "{$key}{$value}";
                 }
             }
 
@@ -240,4 +235,19 @@ class Map implements \Countable, \IteratorAggregate
 
         return $result;
     }
+}
+
+/**
+ * @internal
+ */
+final class MapEntry
+{
+    /** @var mixed */
+    public $key;
+    /** @var mixed */
+    public $value;
+    /** @var MapEntry|null */
+    public $prev = null;
+    /** @var MapEntry|null */
+    public $next = null;
 }
