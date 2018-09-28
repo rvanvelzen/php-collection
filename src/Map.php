@@ -5,6 +5,7 @@ class Map implements \Countable, \IteratorAggregate
 {
     /** @var int */
     private $size = 0;
+    /** @var int */
     private $nextIndex = 0;
     /** @var int[][] */
     private $buckets = [];
