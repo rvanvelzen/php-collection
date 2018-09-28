@@ -1,0 +1,27 @@
+language: php
+php:
+  - 7.1
+  - 7.2
+  - master
+
+env:
+  - dependencies=lowest
+  - dependencies=highest
+
+matrix:
+  allow_failures:
+    - php: master
+      env: dependencies=lowest
+    - php: master
+      env: dependencies=highest
+
+install:
+  - if [ "$dependencies" = "lowest" ]; then composer update --prefer-lowest --no-interaction; fi
+  - if [ "$dependencies" = "highest" ]; then composer update --no-interaction; fi
+
+script:
+  - ./vendor/bin/phpunit --coverage-clover=coverage.xml
+
+cache:
+  directories:
+    - $HOME/.composer/cache
