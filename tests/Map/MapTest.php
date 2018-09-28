@@ -7,7 +7,7 @@ use RVV\Collection\Map;
 
 class MapTest extends TestCase
 {
-    public function test_it_accepts_keys_of_all_types()
+    public function test_it_accepts_keys_of_almost_all_types()
     {
         $map = new Map();
         $map->set(1, 1);
@@ -17,6 +17,17 @@ class MapTest extends TestCase
         $map->set(new \stdClass(), 5);
 
         $this->assertCount(5, $map);
+    }
+
+    public function test_it_accepts_resource_as_key()
+    {
+        $map = new Map();
+
+        $resource = fopen('php://temp', 'w');
+        $map->set($resource, 1);
+
+        $this->assertCount(1, $map);
+        $this->assertSame(1, $map->get($resource));
     }
 
     public function test_it_accepts_arrays_with_recursive_references()

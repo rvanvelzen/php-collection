@@ -179,6 +179,10 @@ class Map implements \Countable, \IteratorAggregate
             return self::hashArrayKey($key);
         }
 
+        if (\is_resource($key)) {
+            return \get_resource_type($key) . $key;
+        }
+
         return $key;
     }
 
