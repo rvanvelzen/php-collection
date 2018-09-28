@@ -154,6 +154,41 @@ class Map implements \Countable, \IteratorAggregate
         return null;
     }
 
+    private function pack()
+    {
+        $entries = $this->entries;
+
+        $this->nextIndex = 0;
+        $this->buckets = [];
+        $this->entries = [];
+
+        foreach ($entries as $entry) {
+            if ($entry) {
+                $index = $this->nextIndex++;
+                $this->entries[$index] = $entry;
+                $this->buckets[$entry->hash][] = $index;
+            }
+        }
+    }
+
+    /**
+     * @param mixed $key1
+     * @param mixed $key2
+     * @return bool
+     */
+    private static function keysAreEquals($key1, $key2): bool
+    {
+        if ($key1 === $key2) {
+            return true;
+        }
+
+        if ($key1 instanceof Hashable) {
+            return $key1->equals($key2);
+        }
+
+        return false;
+    }
+
     /**
      * @param mixed $key
      * @return string
@@ -187,41 +222,6 @@ class Map implements \Countable, \IteratorAggregate
     }
 
     /**
-     * @param mixed $key1
-     * @param mixed $key2
-     * @return bool
-     */
-    private static function keysAreEquals($key1, $key2): bool
-    {
-        if ($key1 === $key2) {
-            return true;
-        }
-
-        if ($key1 instanceof Hashable) {
-            return $key1->equals($key2);
-        }
-
-        return false;
-    }
-
-    private function pack()
-    {
-        $entries = $this->entries;
-
-        $this->nextIndex = 0;
-        $this->buckets = [];
-        $this->entries = [];
-
-        foreach ($entries as $entry) {
-            if ($entry) {
-                $index = $this->nextIndex++;
-                $this->entries[$index] = $entry;
-                $this->buckets[$entry->hash][] = $index;
-            }
-        }
-    }
-
-    /**
      * @param array $array
      * @return string
      */
@@ -243,13 +243,17 @@ class Map implements \Countable, \IteratorAggregate
             $values = $refs = $queue[$offset];
             foreach ($values as $key => $value) {
                 if (\is_array($value)) {
-                    $refs[$key] = $cookie;
-                    if ($values[$key] === $cookie) {
-                        $refs[$key] = $value;
+                    try {
+                        $refs[$key] = $cookie;
+                        if ($values[$key] === $cookie) {
+                            $refs[$key] = $value;
+                            $result .= "{$key}\0";
+                        } else {
+                            $queue[] = $value;
+                            ++$length;
+                        }
+                    } catch (\TypeError $ex) {
                         $result .= "{$key}\0";
-                    } else {
-                        $queue[] = $value;
-                        ++$length;
                     }
                 } else {
                     $value = self::hashKey($value);
