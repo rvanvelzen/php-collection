@@ -2,6 +2,7 @@
 namespace RVV\Collection\Tests;
 
 use PHPUnit\Framework\TestCase;
+use RVV\Collection\Hashable;
 use RVV\Collection\Map;
 
 class MapTest extends TestCase
@@ -82,5 +83,50 @@ class MapTest extends TestCase
         $entries = new \ReflectionProperty($map, 'entries');
         $entries->setAccessible(true);
         $this->assertLessThan(100, \count($entries->getValue($map)));
+    }
+
+    public function test_it_compares_Hashable_objects_using_their_hash_and_equals_methods()
+    {
+        $object1 = new BadHashable(1);
+        $object2 = new BadHashable(1);
+        $object3 = new BadHashable(2);
+
+        $map = new Map();
+        $map->set($object1, $object1);
+        $map->set($object2, $object2);
+        $map->set($object3, $object3);
+
+        $this->assertCount(2, $map);
+        $this->assertSame($object2, $map->get($object1));
+        $this->assertSame($object2, $map->get($object2));
+        $this->assertSame($object3, $map->get($object3));
+    }
+}
+
+class BadHashable implements Hashable
+{
+    /** @var int */
+    private $value;
+
+    public function __construct(int $value)
+    {
+        $this->value = $value;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function hash()
+    {
+        return $this->value;
+    }
+
+    /**
+     * @param mixed $other
+     * @return bool
+     */
+    public function equals($other): bool
+    {
+        return $other instanceof BadHashable && $other->value === $this->value;
     }
 }

@@ -30,7 +30,7 @@ class Map implements \Countable, \IteratorAggregate
                 continue;
             }
 
-            if ($this->entries[$index]->key !== $key) {
+            if (!self::keysAreEquals($this->entries[$index]->key, $key)) {
                 continue;
             }
 
@@ -144,7 +144,7 @@ class Map implements \Countable, \IteratorAggregate
             foreach ($this->buckets[$hash] as $index) {
                 if (isset($this->entries[$index])) {
                     $entry = $this->entries[$index];
-                    if ($entry->key === $key) {
+                    if (self::keysAreEquals($entry->key, $key)) {
                         return $entry;
                     }
                 }
@@ -161,6 +161,10 @@ class Map implements \Countable, \IteratorAggregate
     private static function hashKey($key)
     {
         if (\is_object($key)) {
+            if ($key instanceof Hashable) {
+                return $key->hash();
+            }
+
             static $useId = null;
             if ($useId === null) {
                 // prefer spl_object_id only if it's the built-in version - polyfills use spl_object_hash with some
@@ -176,6 +180,24 @@ class Map implements \Countable, \IteratorAggregate
         }
 
         return $key;
+    }
+
+    /**
+     * @param mixed $key1
+     * @param mixed $key2
+     * @return bool
+     */
+    private static function keysAreEquals($key1, $key2): bool
+    {
+        if ($key1 === $key2) {
+            return true;
+        }
+
+        if ($key1 instanceof Hashable) {
+            return $key1->equals($key2);
+        }
+
+        return false;
     }
 
     private function pack()
