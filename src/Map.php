@@ -5,8 +5,11 @@ class Map implements \Countable, \IteratorAggregate
 {
     /** @var int */
     private $size = 0;
-    /** @var MapEntry[][] */
+    private $nextIndex = 0;
+    /** @var int[][] */
     private $buckets = [];
+    /** @var MapEntry[] */
+    private $entries = [];
 
     public function count(): int
     {
@@ -21,21 +24,22 @@ class Map implements \Countable, \IteratorAggregate
         }
 
         $bucket = $this->buckets[$hash];
-        foreach ($bucket as $ii => $entry) {
-            if ($entry->key !== $key) {
+        foreach ($bucket as $ii => $index) {
+            if (!isset($this->entries[$index])) {
                 continue;
             }
 
-            $last = \array_pop($bucket);
-            if ($last !== $entry) {
-                $bucket[$ii] = $last;
-            } elseif (!$bucket) {
-                unset($this->buckets[$hash]);
-            } else {
-                $this->buckets[$hash] = $bucket;
+            if ($this->entries[$index]->key !== $key) {
+                continue;
             }
 
+            $this->entries[$index] = null;
+
             --$this->size;
+
+            if ($this->size > 8 && ($this->size < ($this->nextIndex / 2))) {
+                $this->pack();
+            }
 
             return true;
         }
@@ -45,8 +49,8 @@ class Map implements \Countable, \IteratorAggregate
 
     public function getIterator(): iterable
     {
-        foreach ($this->buckets as $bucket) {
-            foreach ($bucket as $entry) {
+        foreach ($this->entries as $entry) {
+            if ($entry) {
                 yield $entry->key => $entry->value;
             }
         }
@@ -54,8 +58,8 @@ class Map implements \Countable, \IteratorAggregate
 
     public function forEach(callable $fn): void
     {
-        foreach ($this->buckets as $bucket) {
-            foreach ($bucket as $entry) {
+        foreach ($this->entries as $entry) {
+            if ($entry) {
                 $fn($entry->value, $entry->key);
             }
         }
@@ -82,8 +86,8 @@ class Map implements \Countable, \IteratorAggregate
 
     public function keys(): iterable
     {
-        foreach ($this->buckets as $bucket) {
-            foreach ($bucket as $entry) {
+        foreach ($this->entries as $entry) {
+            if ($entry) {
                 yield $entry->key;
             }
         }
@@ -103,10 +107,13 @@ class Map implements \Countable, \IteratorAggregate
         }
 
         $entry = new MapEntry();
+        $entry->hash = $hash;
         $entry->key = $key;
         $entry->value = $value;
 
-        $this->buckets[$hash][] = $entry;
+        $index = $this->nextIndex++;
+        $this->entries[$index] = $entry;
+        $this->buckets[$hash][] = $index;
         ++$this->size;
 
         return $this;
@@ -114,8 +121,8 @@ class Map implements \Countable, \IteratorAggregate
 
     public function values(): iterable
     {
-        foreach ($this->buckets as $bucket) {
-            foreach ($bucket as $entry) {
+        foreach ($this->entries as $entry) {
+            if ($entry) {
                 yield $entry->value;
             }
         }
@@ -133,9 +140,12 @@ class Map implements \Countable, \IteratorAggregate
         }
 
         if (isset($this->buckets[$hash])) {
-            foreach ($this->buckets[$hash] as $entry) {
-                if ($entry->key === $key) {
-                    return $entry;
+            foreach ($this->buckets[$hash] as $index) {
+                if (isset($this->entries[$index])) {
+                    $entry = $this->entries[$index];
+                    if ($entry->key === $key) {
+                        return $entry;
+                    }
                 }
             }
         }
@@ -165,6 +175,23 @@ class Map implements \Countable, \IteratorAggregate
         }
 
         return $key;
+    }
+
+    private function pack()
+    {
+        $entries = $this->entries;
+
+        $this->nextIndex = 0;
+        $this->buckets = [];
+        $this->entries = [];
+
+        foreach ($entries as $entry) {
+            if ($entry) {
+                $index = $this->nextIndex++;
+                $this->entries[$index] = $entry;
+                $this->buckets[$entry->hash][] = $index;
+            }
+        }
     }
 
     /**
@@ -215,6 +242,8 @@ class Map implements \Countable, \IteratorAggregate
  */
 final class MapEntry
 {
+    /** @var string|int */
+    public $hash;
     /** @var mixed */
     public $key;
     /** @var mixed */
