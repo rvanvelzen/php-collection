@@ -41,6 +41,21 @@ class MapTest extends TestCase
         $this->assertSame(1, $map->get($array));
     }
 
+    public function test_it_does_not_crash_on_getting_by_arrays_with_recursive_references_that_do_not_exists()
+    {
+        $array1 = [null, 1, 2];
+        $array1[0] = [&$array1];
+
+        $array2 = [null, '1', '2'];
+        $array2[0] = [&$array2];
+
+        $map = new Map();
+        $map->set($array1, 1);
+
+        $this->assertSame(1, $map->get($array1));
+        $this->assertSame(null, $map->get($array2));
+    }
+
     public function test_it_handles_colliding_keys()
     {
         $map = new Map();
@@ -111,6 +126,27 @@ class MapTest extends TestCase
         $this->assertSame($object2, $map->get($object1));
         $this->assertSame($object2, $map->get($object2));
         $this->assertSame($object3, $map->get($object3));
+    }
+
+    public function test_it_compares_Hashable_objects_contained_in_an_array_using_their_hash_and_equals_methods()
+    {
+        $object1 = new BadHashable(1);
+        $object2 = new BadHashable(1);
+        $object3 = new BadHashable(2);
+
+        $array1 = [$object1];
+        $array2 = [$object2];
+        $array3 = [$object3];
+
+        $map = new Map();
+        $map->set($array1, $object1);
+        $map->set($array2, $object2);
+        $map->set($array3, $object3);
+
+        $this->assertCount(2, $map);
+        $this->assertSame($object2, $map->get($array1));
+        $this->assertSame($object2, $map->get($array2));
+        $this->assertSame($object3, $map->get($array3));
     }
 }
 

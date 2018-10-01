@@ -30,7 +30,7 @@ class Map implements \Countable, \IteratorAggregate
                 continue;
             }
 
-            if (!self::keysAreEquals($this->entries[$index]->key, $key)) {
+            if (!self::keysAreEqual($this->entries[$index]->key, $key)) {
                 continue;
             }
 
@@ -144,7 +144,7 @@ class Map implements \Countable, \IteratorAggregate
             foreach ($this->buckets[$hash] as $index) {
                 if (isset($this->entries[$index])) {
                     $entry = $this->entries[$index];
-                    if (self::keysAreEquals($entry->key, $key)) {
+                    if (self::keysAreEqual($entry->key, $key)) {
                         return $entry;
                     }
                 }
@@ -176,17 +176,61 @@ class Map implements \Countable, \IteratorAggregate
      * @param mixed $key2
      * @return bool
      */
-    private static function keysAreEquals($key1, $key2): bool
+    private static function keysAreEqual($key1, $key2): bool
     {
-        if ($key1 === $key2) {
-            return true;
-        }
-
         if ($key1 instanceof Hashable) {
             return $key1->equals($key2);
         }
 
+        if (\is_array($key1) && \is_array($key2)) {
+            return self::arrayKeysAreEqual($key1, $key2);
+        }
+
+        if ($key1 === $key2) {
+            return true;
+        }
+
         return false;
+    }
+
+    /**
+     * @param array $key1
+     * @param array $key2
+     * @param array $seen
+     * @return bool
+     */
+    private static function arrayKeysAreEqual($key1, $key2, array $seen = []): bool
+    {
+        if (\count($key1) !== \count($key2) || \array_keys($key1) !== \array_keys($key2)) {
+            return false;
+        }
+
+        if (\in_array([$key1, $key2], $seen, true) || \in_array([$key2, $key1], $seen, true)) {
+            return true;
+        }
+
+        $arrays = [];
+
+        foreach ($key1 as $index => $value1) {
+            $value2 = $key2[$index];
+            if (\is_array($value1) && \is_array($value2)) {
+                $arrays[] = [$value1, $value2];
+            } elseif (!self::keysAreEqual($value1, $value2)) {
+                return false;
+            }
+        }
+
+        if ($arrays) {
+            $seen[] = [$key1, $key2];
+
+            foreach ($arrays as list($value1, $value2)) {
+                if (!self::arrayKeysAreEqual($value1, $value2, $seen)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /**
