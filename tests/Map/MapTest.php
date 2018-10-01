@@ -148,6 +148,24 @@ class MapTest extends TestCase
         $this->assertSame($object2, $map->get($array2));
         $this->assertSame($object3, $map->get($array3));
     }
+
+    public function test_serializing_and_unserializing_produces_an_identical_map()
+    {
+        $map = new Map();
+
+        for ($ii = 0; $ii < 10; ++$ii) {
+            $map->set($ii, $ii * $ii);
+        }
+        $map->delete(1);
+        $map->delete(8);
+        $map->set(1, 1);
+
+        $serialized = serialize($map);
+        $unserialized = unserialize($serialized);
+
+        $this->assertInstanceOf(Map::class, $unserialized);
+        $this->assertSame(\iterator_to_array($map), \iterator_to_array($unserialized));
+    }
 }
 
 class BadHashable implements Hashable

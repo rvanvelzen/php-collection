@@ -1,7 +1,7 @@
 <?php
 namespace RVV\Collection;
 
-class Map implements \Countable, \IteratorAggregate
+class Map implements \Countable, \IteratorAggregate, \Serializable
 {
     /** @var int */
     private $size = 0;
@@ -24,8 +24,7 @@ class Map implements \Countable, \IteratorAggregate
             return false;
         }
 
-        $bucket = $this->buckets[$hash];
-        foreach ($bucket as $ii => $index) {
+        foreach ($this->buckets[$hash] as $ii => $index) {
             if (!isset($this->entries[$index])) {
                 continue;
             }
@@ -36,10 +35,15 @@ class Map implements \Countable, \IteratorAggregate
 
             $this->entries[$index] = null;
 
+            \array_splice($this->buckets[$hash], $ii, 1);
+            if (!$this->buckets[$hash]) {
+                unset($this->buckets[$hash]);
+            }
+
             --$this->size;
 
             if ($this->size > 8 && ($this->size < ($this->nextIndex / 2))) {
-                $this->pack();
+                $this->rebuild($this->entries);
             }
 
             return true;
@@ -48,6 +52,9 @@ class Map implements \Countable, \IteratorAggregate
         return false;
     }
 
+    /**
+     * @return \Generator|iterable
+     */
     public function getIterator(): iterable
     {
         foreach ($this->entries as $entry) {
@@ -85,6 +92,9 @@ class Map implements \Countable, \IteratorAggregate
         return $this->getEntry($key) !== null;
     }
 
+    /**
+     * @return \Generator|iterable
+     */
     public function keys(): iterable
     {
         foreach ($this->entries as $entry) {
@@ -107,19 +117,17 @@ class Map implements \Countable, \IteratorAggregate
             return $this;
         }
 
-        $entry = new MapEntry();
-        $entry->hash = $hash;
-        $entry->key = $key;
-        $entry->value = $value;
-
         $index = $this->nextIndex++;
-        $this->entries[$index] = $entry;
+        $this->entries[$index] = new MapEntry($hash, $key, $value);
         $this->buckets[$hash][] = $index;
         ++$this->size;
 
         return $this;
     }
 
+    /**
+     * @return \Generator|iterable
+     */
     public function values(): iterable
     {
         foreach ($this->entries as $entry) {
@@ -127,6 +135,42 @@ class Map implements \Countable, \IteratorAggregate
                 yield $entry->value;
             }
         }
+    }
+
+    /**
+     * String representation of object
+     *
+     * @link https://php.net/manual/en/serializable.serialize.php
+     * @return string
+     */
+    public function serialize()
+    {
+        $entries = [];
+        foreach ($this->entries as $entry) {
+            if ($entry) {
+                $entries[] = [$entry->key, $entry->value];
+            }
+        }
+
+        return serialize($entries);
+    }
+
+    /**
+     * Constructs the object
+     *
+     * @link https://php.net/manual/en/serializable.unserialize.php
+     * @param string $serialized
+     * @return void
+     */
+    public function unserialize($serialized): void
+    {
+        $entries = [];
+        foreach (unserialize($serialized) as $entry) {
+            $entries[] = new MapEntry(self::hashKey($entry[0]), $entry[0], $entry[1]);
+        }
+
+        $this->rebuild($entries);
+        $this->size = \count($entries);
     }
 
     /**
@@ -154,10 +198,11 @@ class Map implements \Countable, \IteratorAggregate
         return null;
     }
 
-    private function pack()
+    /**
+     * @param MapEntry[] $entries
+     */
+    private function rebuild(array $entries): void
     {
-        $entries = $this->entries;
-
         $this->nextIndex = 0;
         $this->buckets = [];
         $this->entries = [];
@@ -323,4 +368,18 @@ final class MapEntry
     public $key;
     /** @var mixed */
     public $value;
+
+    /**
+     * @param int|string $hash
+     * @param mixed $key
+     * @param mixed $value
+     */
+    public function __construct($hash, $key, $value)
+    {
+        $this->hash = $hash;
+        $this->key = $key;
+        $this->value = $value;
+    }
+
+
 }
