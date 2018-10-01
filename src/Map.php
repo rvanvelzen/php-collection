@@ -173,6 +173,12 @@ class Map implements \Countable, \IteratorAggregate, \Serializable
         $this->size = \count($entries);
     }
 
+    public function __destruct()
+    {
+        $this->buckets = $this->entries = [];
+        $this->size = $this->nextIndex = 0;
+    }
+
     /**
      * @param mixed $key
      * @param string|null $hash
@@ -380,6 +386,4 @@ final class MapEntry
         $this->key = $key;
         $this->value = $value;
     }
-
-
 }
