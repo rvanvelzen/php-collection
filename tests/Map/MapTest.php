@@ -7,6 +7,44 @@ use RVV\Collection\Map;
 
 class MapTest extends TestCase
 {
+    public function test_has_returns_true_if_a_key_exists()
+    {
+        $map = new Map();
+        $this->assertFalse($map->has('key'));
+        $map->set('key', 'value');
+        $this->assertTrue($map->has('key'));
+        $map->delete('key');
+        $this->assertFalse($map->has('key'));
+    }
+
+    public function test_keys_returns_all_keys_in_order()
+    {
+        $map = new Map();
+        $this->assertSame([], \iterator_to_array($map->keys()));
+        $map->set('key 1', 'value 1');
+        $map->set('key 2', 'value 2');
+        $this->assertSame(['key 1', 'key 2'], \iterator_to_array($map->keys()));
+    }
+
+    public function test_values_returns_all_values_in_order()
+    {
+        $map = new Map();
+        $this->assertSame([], \iterator_to_array($map->values()));
+        $map->set('key 1', 'value 1');
+        $map->set('key 2', 'value 2');
+        $map->set('key 3', 'value 1');
+        $this->assertSame(['value 1', 'value 2', 'value 1'], \iterator_to_array($map->values()));
+    }
+
+    public function test_delete_returns_true_if_the_key_was_deleted()
+    {
+        $map = new Map();
+        $this->assertFalse($map->delete('key'));
+        $map->set('key', 'value');
+        $this->assertTrue($map->delete('key'));
+        $this->assertFalse($map->delete('key'));
+    }
+
     public function test_it_accepts_keys_of_almost_all_types()
     {
         $map = new Map();

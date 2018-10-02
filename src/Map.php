@@ -64,15 +64,6 @@ class Map implements \Countable, \IteratorAggregate, \Serializable
         }
     }
 
-    public function forEach(callable $fn): void
-    {
-        foreach ($this->entries as $entry) {
-            if ($entry) {
-                $fn($entry->value, $entry->key);
-            }
-        }
-    }
-
     /**
      * @param mixed $key
      * @return mixed
@@ -138,6 +129,20 @@ class Map implements \Countable, \IteratorAggregate, \Serializable
     }
 
     /**
+     * @return array[]
+     */
+    public function toArray(): array
+    {
+        $result = [];
+        foreach ($this->entries as $entry) {
+            if ($entry) {
+                $result[] = [$entry->key, $entry->value];
+            }
+        }
+        return $result;
+    }
+
+    /**
      * String representation of object
      *
      * @link https://php.net/manual/en/serializable.serialize.php
@@ -145,14 +150,7 @@ class Map implements \Countable, \IteratorAggregate, \Serializable
      */
     public function serialize()
     {
-        $entries = [];
-        foreach ($this->entries as $entry) {
-            if ($entry) {
-                $entries[] = [$entry->key, $entry->value];
-            }
-        }
-
-        return serialize($entries);
+        return serialize($this->toArray());
     }
 
     /**
@@ -360,30 +358,5 @@ class Map implements \Countable, \IteratorAggregate, \Serializable
         }
 
         return $result;
-    }
-}
-
-/**
- * @internal
- */
-final class MapEntry
-{
-    /** @var string|int */
-    public $hash;
-    /** @var mixed */
-    public $key;
-    /** @var mixed */
-    public $value;
-
-    /**
-     * @param int|string $hash
-     * @param mixed $key
-     * @param mixed $value
-     */
-    public function __construct($hash, $key, $value)
-    {
-        $this->hash = $hash;
-        $this->key = $key;
-        $this->value = $value;
     }
 }
